@@ -20,7 +20,7 @@ export default async function({login, data, imports, rest, q, account}, {enabled
     }
 
     //Repositories
-    const repositories = data.user.repositories.nodes.map(({name: repo, owner: {login: owner}}) => ({repo, owner})).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)) ?? []
+    const repositories = data.user.repositories.nodes.filter(({owner}) => owner != null).map(({name: repo, owner: {login: owner}}) => ({repo, owner})).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)) ?? []
 
     //Get contributors stats from repositories
     console.debug(`metrics/compute/${login}/plugins > lines > querying api`)
@@ -44,7 +44,7 @@ export default async function({login, data, imports, rest, q, account}, {enabled
         return
       //Compute changes
       repos[handle] = {added: 0, deleted: 0, changed: 0}
-      const contributors = stats.filter(({author}) => (context.mode === "repository") || (context.mode === "organization") ? true : author?.login?.toLocaleLowerCase() === login.toLocaleLowerCase())
+      const contributors = stats.filter(({author}) => (author != null) && ((context.mode === "repository") || (context.mode === "organization") ? true : author.login.toLocaleLowerCase() === login.toLocaleLowerCase()))
       for (const contributor of contributors) {
         let added = 0, changed = 0, deleted = 0
         contributor.weeks.forEach(({a = 0, d = 0, c = 0, w}) => {
@@ -59,7 +59,7 @@ export default async function({login, data, imports, rest, q, account}, {enabled
           weeks[date].deleted += d
           weeks[date].changed += c
         })
-        console.debug(`metrics/compute/${login}/plugins > lines > ${handle}: @${contributor.author.login} +${added} -${deleted} ~${changed}`)
+        console.debug(`metrics/compute/${login}/plugins > lines > ${handle}: @${contributor.author?.login ?? "unknown"} +${added} -${deleted} ~${changed}`)
         repos[handle].added += added
         repos[handle].deleted += deleted
         repos[handle].changed += changed
